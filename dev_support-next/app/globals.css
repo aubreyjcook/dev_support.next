@@ -1,26 +1,358 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ==========================================================================
+   Design tokens
+   ==========================================================================
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+   Every surface, border, and text color in the UI resolves through one of the
+   semantic tokens below. Components never use `dark:` variants or raw palette
+   colors, so a single token edit re-themes the whole application.
+
+   Theme resolution order (all CSS-only, no server round trip):
+     1. `:root`                                -> light tokens
+     2. `@media (prefers-color-scheme: dark)`  -> dark tokens, unless the user
+        explicitly pinned light via `data-theme="light"`
+     3. `:root[data-theme="dark"]`             -> dark tokens, explicit override
+
+   `data-theme` is written by the inline script in `app/layout.tsx` before
+   first paint, so there is no flash of the wrong theme. `color-scheme` is kept
+   in sync so native controls and scrollbars match.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  --background: #fafafa;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --foreground: #18181b;
+  --muted: #6e6e78;
+  --muted-strong: #52525b;
+  --line: #e4e4e7;
+  --line-strong: #d4d4d8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-contrast: #ffffff;
+  --danger: #dc2626;
+
+  --tone-blue: #1d4ed8;
+  --tone-amber: #b45309;
+  --tone-violet: #6d28d9;
+  --tone-emerald: #047857;
+  --tone-zinc: #52525b;
+  --tone-red: #b91c1c;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --background: #09090b;
+    --surface: #121216;
+    --surface-muted: #1b1b21;
+    --foreground: #ededf0;
+    --muted: #9b9ba4;
+    --muted-strong: #c3c3cb;
+    --line: #26262d;
+    --line-strong: #3a3a44;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --accent-contrast: #0b1220;
+    --danger: #f87171;
+
+    --tone-blue: #93c5fd;
+    --tone-amber: #fcd34d;
+    --tone-violet: #c4b5fd;
+    --tone-emerald: #6ee7b7;
+    --tone-zinc: #a1a1aa;
+    --tone-red: #fca5a5;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #09090b;
+  --surface: #121216;
+  --surface-muted: #1b1b21;
+  --foreground: #ededf0;
+  --muted: #9b9ba4;
+  --muted-strong: #c3c3cb;
+  --line: #26262d;
+  --line-strong: #3a3a44;
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --accent-contrast: #0b1220;
+  --danger: #f87171;
+
+  --tone-blue: #93c5fd;
+  --tone-amber: #fcd34d;
+  --tone-violet: #c4b5fd;
+  --tone-emerald: #6ee7b7;
+  --tone-zinc: #a1a1aa;
+  --tone-red: #fca5a5;
+}
+
+/* Expose the tokens to Tailwind so `bg-surface`, `text-muted`, `border-line`
+   and friends are real utilities. `inline` keeps them as `var(...)` so the
+   cascade continues to drive theme switches. */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-danger: var(--danger);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  html {
+    background-color: var(--background);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--accent) 26%, transparent);
+  }
+
+  :where(a, button, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ==========================================================================
+   Components
+   ========================================================================== */
+
+@layer components {
+  /* --- badges ------------------------------------------------------------ */
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    padding: 0.0625rem 0.4375rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    color: var(--tone, var(--muted-strong));
+    background-color: color-mix(in oklab, var(--tone, var(--muted)) 11%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone, var(--muted)) 26%, transparent);
+  }
+
+  .badge-dot {
+    block-size: 0.375rem;
+    inline-size: 0.375rem;
+    border-radius: 9999px;
+    background-color: var(--tone, currentColor);
+    flex: none;
+  }
+
+  .badge-blue {
+    --tone: var(--tone-blue);
+  }
+  .badge-amber {
+    --tone: var(--tone-amber);
+  }
+  .badge-violet {
+    --tone: var(--tone-violet);
+  }
+  .badge-emerald {
+    --tone: var(--tone-emerald);
+  }
+  .badge-zinc {
+    --tone: var(--tone-zinc);
+  }
+  .badge-red {
+    --tone: var(--tone-red);
+  }
+
+  /* --- surfaces ---------------------------------------------------------- */
+
+  .card {
+    border-radius: 0.75rem;
+    border: 1px solid var(--line);
+    background-color: var(--surface);
+  }
+
+  /* --- form controls ----------------------------------------------------- */
+
+  .input {
+    display: block;
+    inline-size: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--line-strong);
+    background-color: var(--surface);
+    color: var(--foreground);
+    padding: 0.4375rem 0.625rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  .input::placeholder {
+    color: var(--muted);
+  }
+
+  .input:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+
+  .input:disabled {
+    background-color: var(--surface-muted);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .input-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+    border-radius: 0.375rem;
+  }
+
+  /* Native select with a consistent chevron in both themes. */
+  select.input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23888b94' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 0.875rem;
+    padding-inline-end: 1.75rem;
+  }
+
+  /* --- buttons ----------------------------------------------------------- */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    padding: 0.4375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.25;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--surface);
+    border-color: var(--line-strong);
+    color: var(--foreground);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--surface-muted);
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--muted-strong);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--surface-muted);
+    color: var(--foreground);
+  }
+
+  .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 0.375rem;
+  }
+
+  /* --- misc -------------------------------------------------------------- */
+
+  /* Dims content while a transition-based navigation is in flight. */
+  .is-pending {
+    opacity: 0.55;
+    transition: opacity 120ms ease;
+  }
+
+  .skeleton {
+    border-radius: 0.375rem;
+    background-color: var(--surface-muted);
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  .prose-ticket {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* Internal-note mode. Purely CSS: the composer keeps no React state, the
+     checkbox is a plain form control. */
+  .reply-composer:has(input[name="visibility"]:checked) {
+    border-style: dashed;
+    border-color: var(--line-strong);
+    background-color: var(--surface-muted);
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
