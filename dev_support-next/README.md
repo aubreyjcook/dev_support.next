@@ -102,19 +102,25 @@ lib/
 proxy.ts                  Coarse session gate (Next 16 "proxy" = middleware)
 types/node-sqlite.d.ts    Ambient types for node:sqlite (@types/node is v20)
 tests/                    node:test suites for the pure helpers
-docs/                     Architecture, data model, auth, UI, operations, flows
+docs/                     Architecture, data model, auth, UI, operations, flows,
+                          user guide, code walkthrough
 ```
 
 ## Documentation
 
-| Document                                           | Contents                                                          |
-| -------------------------------------------------- | ----------------------------------------------------------------- |
-| [`docs/architecture.md`](docs/architecture.md)     | Stack, rendering model, Cache Components, request flow, trade-offs |
-| [`docs/data-model.md`](docs/data-model.md)         | Schema, migrations, seeding, query patterns                        |
-| [`docs/authentication.md`](docs/authentication.md) | Sessions, hashing, role matrix, threat notes                       |
-| [`docs/ui-guide.md`](docs/ui-guide.md)             | Design tokens, dark mode, component inventory, conventions         |
-| [`docs/workflows.md`](docs/workflows.md)           | Ticket lifecycle and how each role uses the app                    |
-| [`docs/operations.md`](docs/operations.md)         | Running, deploying, backing up, resetting, troubleshooting         |
+| Document                                             | Audience                                                             |
+| ---------------------------------------------------- | -------------------------------------------------------------------- |
+| [`docs/user-guide.md`](docs/user-guide.md)           | **End users** — how to use the software, screen by screen             |
+| [`docs/code-walkthrough.md`](docs/code-walkthrough.md) | **Learners** — a guided tour for someone who knows programming fundamentals and wants to understand the code |
+| [`docs/workflows.md`](docs/workflows.md)             | Ticket lifecycle and how each role uses the app                       |
+| [`docs/architecture.md`](docs/architecture.md)       | Stack, rendering model, Cache Components, request flow, trade-offs    |
+| [`docs/data-model.md`](docs/data-model.md)           | Schema, migrations, seeding, query patterns                           |
+| [`docs/authentication.md`](docs/authentication.md)   | Sessions, hashing, role matrix, threat notes                          |
+| [`docs/ui-guide.md`](docs/ui-guide.md)               | Design tokens, dark mode, component inventory, conventions            |
+| [`docs/operations.md`](docs/operations.md)           | Running, deploying, backing up, resetting, troubleshooting            |
+
+Suggested next steps live in [`ROADMAP.md`](ROADMAP.md), kept current with each
+change.
 
 ## Key design decisions
 

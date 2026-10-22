@@ -43,6 +43,11 @@ function pad(value: number): string {
 /**
  * Compact relative timestamp: `just now`, `12m ago`, `3h ago`, `2d ago`,
  * `3w ago`, then an absolute short date for anything older.
+ *
+ * `now` is an injectable parameter (defaulting to `Date.now()`), not a hidden
+ * global — the unit tests pass a fixed clock so "3h ago" is deterministic.
+ * Relative labels are timezone-agnostic, which is why they render on the server
+ * without causing a hydration mismatch.
  */
 export function relativeTime(
   value: string | number | Date,
@@ -53,6 +58,8 @@ export function relativeTime(
 
   const delta = now - date.getTime();
 
+  // The ladder reads top-down: each `if` handles the largest unit that fits,
+  // so 59 seconds is "just now", 61 seconds is "1m ago", and so on.
   // Future timestamps (clock skew) collapse to "just now" rather than "-2m".
   if (delta < MINUTE) return "just now";
   if (delta < HOUR) return `${Math.floor(delta / MINUTE)}m ago`;

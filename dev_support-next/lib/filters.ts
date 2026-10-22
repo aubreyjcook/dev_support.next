@@ -29,6 +29,8 @@ export const DEFAULT_FILTERS: TicketFilters = {
   assignee: "any",
 };
 
+// `searchParams` values are `string | string[] | undefined`; a repeated query
+// param arrives as an array. We only ever care about the first value.
 function first(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
@@ -37,6 +39,11 @@ function first(value: string | string[] | undefined): string {
 /**
  * Normalizes raw `searchParams` into a filter object, discarding anything that
  * is not a recognized value. Unknown input can never reach SQL.
+ *
+ * This is the trust boundary for the query string: every value passes through a
+ * type guard (`isStatus`, `isPriority`) or an explicit allow-list before it is
+ * stored, and `q` is trimmed and length-capped. A `?status=admin` or a 10 KB `q`
+ * therefore degrades to "no filter" rather than reaching a query.
  */
 export function parseTicketFilters(
   raw: Record<string, string | string[] | undefined>,

@@ -7,6 +7,13 @@
  * value.
  */
 
+/**
+ * `as const` freezes the array literal so its element type is the union of the
+ * three literal strings, not `string`. `Role` is then that exact union — the
+ * compiler rejects a misspelling like `"agnt"` anywhere a `Role` is expected.
+ * The same pattern defines every enum below; `isRole`/`isStatus`/… are the
+ * runtime counterparts that validate *untyped* input (URLs, form data).
+ */
 export const ROLES = ["requester", "agent", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -22,6 +29,8 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   admin: "Full access, including user management.",
 };
 
+// Order matters: this is the ticket lifecycle, and it is also the order the
+// status `<select>` presents. Keep `open` first, `closed` last.
 export const STATUSES = [
   "open",
   "in_progress",
@@ -109,6 +118,11 @@ export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
 }
 
+// These `value is X` guards are type predicates: a `true` return narrows
+// `unknown` to the specific union member, so callers can pass a validated value
+// straight into a typed parameter. They are the bridge between untrusted input
+// (searchParams, FormData) and the strict types above.
+
 export function isStatus(value: unknown): value is Status {
   return typeof value === "string" && (STATUSES as readonly string[]).includes(value);
 }
@@ -141,12 +155,17 @@ export function canManageUsers(role: Role): boolean {
  * pulling the database layer into the proxy runtime. */
 export const SESSION_COOKIE = "hd_session";
 
-/** Human-facing, stable ticket reference. Derived from the row id. */
+/** Human-facing, stable ticket reference. Derived from the row id, e.g. `SUP-0001`. */
 export function ticketRef(id: number): string {
   return `SUP-${String(id).padStart(4, "0")}`;
 }
 
-/** Parses "SUP-0007", "sup-7" or "7" into a ticket id. */
+/**
+ * Inverse of `ticketRef`: accepts the formats people actually type — `SUP-0007`,
+ * `sup-7`, `SUP 7`, `7` — and returns the numeric id, or `null` when it is not
+ * a reference. The ticket search uses this to short-circuit a `LIKE` scan into
+ * an exact primary-key lookup.
+ */
 export function parseTicketRef(input: string): number | null {
   const match = /^\s*(?:sup[-_ ]?)?(\d{1,9})\s*$/i.exec(input);
   if (!match) return null;

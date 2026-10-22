@@ -58,6 +58,13 @@ Seeded accounts (password `helpdesk123` unless `SEED_PASSWORD` is set):
 
 Start with [`dev_support-next/README.md`](dev_support-next/README.md), then:
 
+- [`docs/user-guide.md`](dev_support-next/docs/user-guide.md) — **how to use the
+  software**, screen by screen (end users)
+- [`docs/code-walkthrough.md`](dev_support-next/docs/code-walkthrough.md) — a
+  **guided tour of the code** for someone with programming fundamentals who is
+  learning to understand it
+- [`docs/workflows.md`](dev_support-next/docs/workflows.md) — ticket lifecycle
+  and role walkthroughs
 - [`docs/architecture.md`](dev_support-next/docs/architecture.md) — stack,
   rendering model, Cache Components, request flow, trade-offs
 - [`docs/data-model.md`](dev_support-next/docs/data-model.md) — schema,
@@ -66,8 +73,6 @@ Start with [`dev_support-next/README.md`](dev_support-next/README.md), then:
   hashing, role matrix, threat notes
 - [`docs/ui-guide.md`](dev_support-next/docs/ui-guide.md) — design tokens, dark
   mode, component inventory, conventions
-- [`docs/workflows.md`](dev_support-next/docs/workflows.md) — ticket lifecycle
-  and role walkthroughs
 - [`docs/operations.md`](dev_support-next/docs/operations.md) — deploy, backup,
   recovery, troubleshooting
 
@@ -84,15 +89,11 @@ Done:
 - [x] Admin user management (create, role, deactivate, password reset)
 - [x] Minimal responsive UI with flash-free dark mode
 - [x] Documentation set and unit tests
+- [x] End-user guide, learning-oriented code walkthrough, and a standing roadmap
 
-Next:
-
-- [ ] Email notifications on new tickets and replies (SMTP or webhook)
-- [ ] Attachment uploads with size/type limits
-- [ ] Pagination or infinite scroll past the 100-row list cap
-- [ ] Login rate limiting (or move it to the documented reverse-proxy config)
-- [ ] Per-user timezone rendering instead of UTC tooltips
-- [ ] CSV export of tickets and activity for reporting
+The "next steps" list now lives in
+[`dev_support-next/ROADMAP.md`](dev_support-next/ROADMAP.md), prioritized and
+kept current with each change.
 
 ## Config-Init Log
 

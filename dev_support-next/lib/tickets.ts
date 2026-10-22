@@ -92,6 +92,16 @@ export interface TicketStats {
 /* Read helpers                                                                */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Every ticket read shares the same column list and joins, composed from three
+ * fixed pieces (SELECT_COLUMNS + SELECT_FROM + buildWhere). Keeping them as
+ * constants means the "summary" shape and the "detail" shape can never drift
+ * apart, and adding a column means editing exactly one place.
+ *
+ * The `users` table is joined three times under three aliases — requester (`ru`),
+ * assignee (`au`), and last-replier (`lr`). `au`/`lr` are LEFT JOINs because a
+ * ticket may be unassigned and the last reply may predate any reply column.
+ */
 const SELECT_COLUMNS = `
   t.id, t.subject, t.description, t.status, t.priority, t.category,
   t.requester_id, ru.name AS requester_name, ru.email AS requester_email,
@@ -139,6 +149,12 @@ function toCategory(value: string): Category {
   return isCategory(value) ? value : "other";
 }
 
+// The row→object mappers are the seam between SQL and the rest of the app.
+// DB values arrive as untyped strings; `toStatus`/`toPriority`/`toCategory`
+// re-validate them through the same guards used for user input, so a value that
+// somehow bypassed the CHECK constraints degrades to a safe default instead of
+// crashing the render.
+
 function toSummary(row: TicketSelectRow): TicketSummary {
   const status = toStatus(row.status);
   return {
@@ -151,6 +167,8 @@ function toSummary(row: TicketSelectRow): TicketSummary {
     requesterName: row.requester_name,
     assigneeName: row.assignee_name,
     messageCount: Number(row.message_count ?? 0),
+    // The one derived flag the whole queue runs on: still open AND the
+    // requester spoke last (i.e. the team owes a reply).
     awaitingAgent:
       ACTIVE_STATUSES.includes(status) && row.last_reply_role === "requester",
     createdAt: row.created_at,
@@ -177,6 +195,8 @@ function toDetail(row: TicketSelectRow): TicketDetail {
 
 /** Escapes LIKE wildcards so user input is matched literally. */
 function likePattern(input: string): string {
+  // `%` and `_` are LIKE wildcards; a leading `\` is the escape char, so it
+  // must be doubled too. The query pairs this with `ESCAPE '\'` below.
   return `%${input.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }
 
@@ -185,6 +205,16 @@ interface WhereClause {
   params: (string | number)[];
 }
 
+/**
+ * Builds the `WHERE` clause for every ticket read, plus its bound parameters.
+ *
+ * This is the only place requesters' row-level scoping lives, so it can't be
+ * skipped by accident. Safety comes from the split between *structure* and
+ * *values*: the clause strings are fixed literals chosen by control flow, and
+ * only `params` carry user data — never string concatenation — so nothing here
+ * can be SQL-injected. The clause and the parameter array stay parallel, which
+ * is why `listTickets` can reuse the same `where` for its `COUNT(*)` query.
+ */
 function buildWhere(viewer: Viewer, filters: TicketFilters): WhereClause {
   const clauses: string[] = [];
   const params: (string | number)[] = [];
@@ -195,6 +225,8 @@ function buildWhere(viewer: Viewer, filters: TicketFilters): WhereClause {
     params.push(viewer.id);
   }
 
+  // `"active"` is a UI concept ("open work"), not a column value, so it expands
+  // to the three statuses that count as unfinished.
   if (filters.status === "active") {
     clauses.push("t.status IN ('open', 'in_progress', 'waiting')");
   } else if (filters.status !== ANY) {
@@ -214,6 +246,8 @@ function buildWhere(viewer: Viewer, filters: TicketFilters): WhereClause {
     clauses.push("t.assignee_id IS NULL");
   }
 
+  // Search: a recognizable ticket reference becomes an exact id lookup (fast);
+  // anything else becomes a case-insensitive LIKE over subject + description.
   if (filters.q) {
     const asRef = parseTicketRef(filters.q);
     if (asRef !== null) {
@@ -416,6 +450,11 @@ interface TicketStateRow {
   resolved_at: string | null;
 }
 
+/**
+ * Reads the mutable columns every writer needs to decide what changed. All the
+ * property setters call this *inside* their transaction so the read and the
+ * write are atomic — a second agent's change can't slip in between.
+ */
 function ticketState(ticketId: number): TicketStateRow | undefined {
   return get<TicketStateRow>(
     `SELECT t.id, t.status, t.priority, t.category, t.assignee_id, au.name AS assignee_name, t.resolved_at
@@ -447,6 +486,8 @@ export interface CreateTicketInput {
   requester: Actor;
 }
 
+// A new ticket is born `open`, unassigned, with the requester as last speaker —
+// which is exactly the "awaiting a first reply" state the queue surfaces.
 export function createTicket(input: CreateTicketInput): number {
   return transaction(() => {
     const now = nowIso();
@@ -526,6 +567,11 @@ export function addMessage(input: AddMessageInput): void {
   });
 }
 
+// The three property setters below share one shape: read current state, do
+// nothing if unchanged, write, then record a human-readable event for the
+// Activity panel. `resolved_at` is maintained specially — stamped when entering
+// `resolved`, cleared when moving back to an active status, and left untouched
+// when moving between `resolved` and `closed`.
 export function setTicketStatus(ticketId: number, status: Status, actor: Actor): void {
   transaction(() => {
     const state = ticketState(ticketId);
@@ -558,6 +604,8 @@ export function setTicketStatus(ticketId: number, status: Status, actor: Actor):
   });
 }
 
+/** Priority is pure triage metadata; changing it bumps `updated_at` so the
+ * ticket surfaces at the top of the activity-sorted queue. */
 export function setTicketPriority(ticketId: number, priority: Priority, actor: Actor): void {
   transaction(() => {
     const state = ticketState(ticketId);
@@ -582,6 +630,8 @@ export function setTicketPriority(ticketId: number, priority: Priority, actor: A
   });
 }
 
+/** Category changes are informational; the event records the fact without the
+ * old value (the label alone is enough context). */
 export function setTicketCategory(ticketId: number, category: Category, actor: Actor): void {
   transaction(() => {
     const state = ticketState(ticketId);
